@@ -1,6 +1,10 @@
 # Yu-Gi-Oh-BP-Format-
 A Ban list that tries to capture the power level of Yu-Gi-Oh decks from 2012. All Link Monsters are banned
 
+# Version 1.0.2
+- Updated to latest sets and structures
+- added python scripts to automatically update format
+
 # Version 1.0.1
 - Penguin Architype is unlimited
 - Legendary Fisherman support increased from limited
