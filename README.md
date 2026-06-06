@@ -1,6 +1,18 @@
 # Yu-Gi-Oh-BP-Format-
 A Ban list that tries to capture the power level of Yu-Gi-Oh decks from 2012. All Link Monsters are banned
 
+# Version 1.0.3
+- Restructure order of Current Banlist, Base Banlist, and BP+ Exceptions
+- Base Banlist Set to March 2012
+- +++ limited +++
+- Trishula, Dragon of the Ice Barrier
+- Goyo Guardian
+- Ultimate Flame Swordsman limited
+- Fighting Flame Dragon limited
+
+- +++ semi-limited +++
+- Flower Cardians
+
 # Version 1.0.2
 - Updated to latest sets and structures
 - added python scripts to automatically update format
