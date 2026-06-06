@@ -84,7 +84,14 @@ def main():
         card_id = str(card.get("id")).zfill(8)
         card_name = card.get("name")
         card_type = card.get("type", "").lower()
+        
+        # Chronological Sort: Sort card_sets based on their initial release dates
         card_sets = card.get("card_sets", [])
+        if card_sets:
+            card_sets = sorted(
+                card_sets, 
+                key=lambda x: x.get("set_release_date", "9999-12-31") if x.get("set_release_date") else "9999-12-31"
+            )
         
         # Rule Check A: Test if asset item resolves directly onto a Retro structural reference boundary (Forces to 3 copies)
         matched_retro = None
