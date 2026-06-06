@@ -26,7 +26,6 @@ A Ban list that tries to capture the power level of Yu-Gi-Oh decks from 2012. Al
 - Dandylion (was at 0)
 - Dark Magician of Chaos (was at 0)
 - Thousand-Eyes Restrict (was at 0)
-
 - +++ BANNED +++
 - Kashtira Fenrir (was at 1)
 - Kashtira Unicorn (was at 1)
