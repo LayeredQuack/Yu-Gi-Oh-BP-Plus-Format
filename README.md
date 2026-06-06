@@ -1,6 +1,12 @@
 # Yu-Gi-Oh-BP-Format-
 A Ban list that tries to capture the power level of Yu-Gi-Oh decks from 2012. All Link Monsters are banned
 
+# Version 1.0.5
+- +++ UNLIMITED +++
+- Tri-Wight
+- +++ SEMI-LIMITED +++
+- Unexpected Dai
+
 # Version 1.0.4
 - Cards assoicated with the first set/structure they appear in, instead of the last set/structure
 - +++ UNLIMITED +++
