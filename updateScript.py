@@ -1,6 +1,7 @@
 import json
 import re
 import sys
+import datetime
 import requests
 
 def load_json_config(filename):
@@ -31,15 +32,30 @@ def extract_protected_ids(content):
             protected.add(card_id)
     return protected
 
+def format_release_date(date_str):
+    """Converts YYYY-MM-DD into 'Month DD, YYYY' format."""
+    if not date_str or date_str == "9999-12-31":
+        return ""
+    try:
+        dt = datetime.datetime.strptime(date_str, "%Y-%m-%d")
+        return dt.strftime("%B %d, %Y")
+    except ValueError:
+        return ""
+
 def main():
     file_path = "lflist.conf"
     
-    # 1. Load context resources out of local JSON configuration models
+    # 1. Load context dictionaries out of local JSON configuration models
     sets_data = load_json_config("sets.json")
     structures_data = load_json_config("structures.json")
     
-    retro_sets = sets_data.get("retro", []) + structures_data.get("retro", [])
-    target_sets = sets_data.get("afterBattlePackEpicDawn", []) + structures_data.get("afterBattlePackEpicDawn", [])
+    # Combine dictionaries into a single combined lookups block
+    retro_sets_dict = {**sets_data.get("retro", {}), **structures_data.get("retro", {})}
+    target_sets_dict = {**sets_data.get("afterBattlePackEpicDawn", {}), **structures_data.get("afterBattlePackEpicDawn", {})}
+
+    # Create master interleaved ordering sequences sorted strictly by release date strings
+    retro_sets_order = sorted(retro_sets_dict.keys(), key=lambda x: retro_sets_dict[x])
+    target_sets_order = sorted(target_sets_dict.keys(), key=lambda x: target_sets_dict[x])
 
     # 2. Read live local Banlist file data
     try:
@@ -72,10 +88,10 @@ def main():
         sys.exit(1)
 
     # Initialize dynamic storage blocks mapping structural rulesets
-    retro_by_set = {set_n: {} for set_n in retro_sets}
-    links_by_set = {target: {} for target in target_sets}
-    pendulums_by_set = {target: {} for target in target_sets}
-    limited_by_set = {target: {} for target in target_sets}
+    retro_by_set = {set_n: {} for set_n in retro_sets_order}
+    links_by_set = {target: {} for target in target_sets_order}
+    pendulums_by_set = {target: {} for target in target_sets_order}
+    limited_by_set = {target: {} for target in target_sets_order}
 
     retro_count, link_count, pend_count, lim_count = 0, 0, 0, 0
 
@@ -84,44 +100,49 @@ def main():
         card_id = str(card.get("id")).zfill(8)
         card_name = card.get("name")
         card_type = card.get("type", "").lower()
-        
-        # Chronological Sort: Sort card_sets based on their initial release dates
         card_sets = card.get("card_sets", [])
-        if card_sets:
-            card_sets = sorted(
-                card_sets, 
-                key=lambda x: x.get("set_release_date", "9999-12-31") if x.get("set_release_date") else "9999-12-31"
-            )
         
-        # Rule Check A: Test if asset item resolves directly onto a Retro structural reference boundary (Forces to 3 copies)
-        matched_retro = None
+        valid_retro_matches = []
+        valid_target_matches = []
+
         for s in card_sets:
             set_name = s.get("set_name", "")
-            for r_set in retro_sets:
-                if r_set.lower() in set_name.lower():
-                    matched_retro = r_set
-                    break
-            if matched_retro:
-                break
-        
-        if matched_retro:
+            # Clean and normalize the API set name to eliminate spacing and punctuation variables
+            clean_api_set = re.sub(r'[^a-z0-9]', '', set_name.lower())
+            
+            # Check against Retro Sets using normalized matching filters
+            for r_set in retro_sets_order:
+                clean_config_set = re.sub(r'[^a-z0-9]', '', r_set.lower())
+                if clean_config_set in clean_api_set:
+                    valid_retro_matches.append({
+                        "config_set": r_set,
+                        "date": retro_sets_dict.get(r_set, "9999-12-31")
+                    })
+            
+            # Check against Modern Target Sets using normalized matching filters
+            for target in target_sets_order:
+                clean_config_target = re.sub(r'[^a-z0-9]', '', target.lower())
+                if clean_config_target in clean_api_set:
+                    valid_target_matches.append({
+                        "config_set": target,
+                        "date": target_sets_dict.get(target, "9999-12-31")
+                    })
+
+        # --- EVALUATION ENGINE ---
+        # Sort collections ascending by configuration-defined dates to prioritize the earliest valid printing
+        if valid_retro_matches:
+            valid_retro_matches.sort(key=lambda x: x["date"])
+            matched_retro = valid_retro_matches[0]["config_set"]
+            
             if card_id not in protected_ids:
                 retro_by_set[matched_retro][card_id] = f"{card_id} 3 --{card_name}"
                 retro_count += 1
             continue
 
-        # Rule Check B: Test if asset item resolves onto an After Battle Pack Target collection boundary
-        matched_target = None
-        for s in card_sets:
-            set_name = s.get("set_name", "")
-            for target in target_sets:
-                if target.lower() in set_name.lower():
-                    matched_target = target
-                    break
-            if matched_target:
-                break
+        if valid_target_matches:
+            valid_target_matches.sort(key=lambda x: x["date"])
+            matched_target = valid_target_matches[0]["config_set"]
 
-        if matched_target:
             if "link" in card_type:
                 links_by_set[matched_target][card_id] = f"{card_id} 0 --{card_name}"
                 link_count += 1
@@ -136,20 +157,25 @@ def main():
     print(f"[+] Loaded {link_count} Link mechanics, {pend_count} Pendulums, and {lim_count} modern target listings.")
 
     # String Compilation Logic Block Generator Utility Ruleset helper
-    def build_section_text(grouped_dict, ordering_list):
+    def build_section_text(grouped_dict, ordering_list, dates_lookup):
         lines = []
         for set_name in ordering_list:
             cards_in_set = grouped_dict[set_name]
             if cards_in_set:
-                lines.append(f"\n# From {set_name}")
+                raw_date = dates_lookup.get(set_name, "")
+                formatted_date = f" ({format_release_date(raw_date)})" if raw_date else ""
+                lines.append(f"\n# From {set_name}{formatted_date}")
                 for c_id in sorted(cards_in_set.keys()):
                     lines.append(cards_in_set[c_id])
         return "\n".join(lines).strip()
 
-    sorted_retro = build_section_text(retro_by_set, retro_sets)
-    sorted_links = build_section_text(links_by_set, target_sets)
-    sorted_pendulums = build_section_text(pendulums_by_set, target_sets)
-    sorted_limited = build_section_text(limited_by_set, target_sets)
+    # Combine data lookups for presentation layer processing
+    all_dates_lookup = {**retro_sets_dict, **target_sets_dict}
+
+    sorted_retro = build_section_text(retro_by_set, retro_sets_order, all_dates_lookup)
+    sorted_links = build_section_text(links_by_set, target_sets_order, all_dates_lookup)
+    sorted_pendulums = build_section_text(pendulums_by_set, target_sets_order, all_dates_lookup)
+    sorted_limited = build_section_text(limited_by_set, target_sets_order, all_dates_lookup)
 
     # 6. Build Structural Placement Injection Modifications Rulesets
     retro_replacement = f"# Start of retro 3 copy cards\n{sorted_retro}\n# End of retro 3 copy cards"
