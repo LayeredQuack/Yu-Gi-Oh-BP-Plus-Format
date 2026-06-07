@@ -38,6 +38,12 @@ python updateScript.py
 
 ## 📜 Changelog
 
+### Version 1.0.6
+- Fixed cards that are limited that should not be
+- **+++ UNLIMITED +++**
+- Fists of the Unrivaled Tenyi
+
+
 ### Version 1.0.5
 - **+++ UNLIMITED +++**
   - Tri-Wight
